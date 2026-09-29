@@ -1,0 +1,11 @@
+.vscode/**
+.vscode-test/**
+test/**
+.gitignore
+.gitattributes
+yarn.lock
+package-lock.json
+**/jsconfig.json
+**/*.map
+**/eslint.config.mjs
+**/.vscode-test.*
