@@ -3,6 +3,7 @@
   "displayName": "VscodeToStm32",
   "description": "在 VSCode 中基于 CMake 一键编译、烧录与调试 STM32（JLink / STLink / DAPLink）。",
   "version": "0.4.1",
+  "icon": "icon.jpg",
   "publisher": "LukeBryan",
   "author": {
     "name": "LukeBryan"
