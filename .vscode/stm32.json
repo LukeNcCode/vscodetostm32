@@ -1,0 +1,12 @@
+{
+  "device": "",
+  "probe": "stlink",
+  "interface": "SWD",
+  "speed": 4000,
+  "debugConfigName": "Debug",
+  "elfPath": "",
+  "buildTarget": "",
+  "buildBeforeFlash": false,
+  "verifyAfterFlash": true,
+  "resetAfterFlash": true
+}

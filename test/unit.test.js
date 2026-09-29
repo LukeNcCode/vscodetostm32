@@ -43,6 +43,32 @@ suite('target: openocdTargetFromDevice', () => {
 		assert.strictEqual(target.openocdTargetFromDevice('ESP32'), undefined);
 		assert.strictEqual(target.openocdTargetFromDevice('STM32'), undefined);
 	});
+
+	test('L0 / L1 用不带 x 的历史脚本名', () => {
+		// OpenOCD 里是 stm32l0.cfg / stm32l1.cfg，不是 stm32l0x.cfg
+		assert.strictEqual(target.openocdTargetFromDevice('STM32L052K8').target, 'stm32l0');
+		assert.strictEqual(target.openocdTargetFromDevice('STM32L152RC').target, 'stm32l1');
+	});
+
+	test('OpenOCD 无对应脚本的系列返回 undefined（不给出无效路径）', () => {
+		// MP1 是 MPU，OpenOCD 主线无 target 脚本；W1 亦无收录
+		assert.strictEqual(target.openocdTargetFromDevice('STM32MP157'), undefined);
+		assert.strictEqual(target.openocdTargetFromDevice('STM32W108C8'), undefined);
+	});
+
+	test('U0 / C0 等新系列有脚本', () => {
+		assert.strictEqual(target.openocdTargetFromDevice('STM32U575ZI').target, 'stm32u5x');
+		assert.strictEqual(target.openocdTargetFromDevice('STM32C031C6').target, 'stm32c0x');
+	});
+
+	test('白名单覆盖主要系列且命名符合 OpenOCD 实际', () => {
+		const w = target.OPENOCD_TARGET_SCRIPTS;
+		assert.ok(Object.keys(w).length >= 18);
+		assert.strictEqual(w.STM32F4, 'stm32f4x');
+		assert.strictEqual(w.STM32L0, 'stm32l0');
+		assert.strictEqual(w.STM32L1, 'stm32l1');
+		assert.strictEqual(w.STM32WB, 'stm32wbx');
+	});
 });
 
 suite('target: normalizeInterface / normalizeSpeed', () => {
@@ -209,6 +235,20 @@ suite('probes: OpenOCD 命令构造', () => {
 	test('device 无法识别时回退到 stm32f4x', () => {
 		const { target: t } = probes.buildOpenocdArgs({ ...baseCtx, device: 'UNKNOWN' }, 'a.elf', {});
 		assert.strictEqual(t, 'stm32f4x');
+	});
+
+	test('推导失败时以 fallback 标记，便于上层提示', () => {
+		const r = probes.buildOpenocdArgs({ ...baseCtx, device: 'STM32MP157' }, 'a.elf', {});
+		assert.strictEqual(r.fallback, true);
+		assert.strictEqual(r.target, probes.DEFAULT_OPENOCD_TARGET);
+		assert.strictEqual(r.mappedFamily, undefined);
+	});
+
+	test('正常推导时 fallback 为 false 且带系列信息', () => {
+		const r = probes.buildOpenocdArgs({ ...baseCtx, device: 'STM32L052K8' }, 'a.elf', {});
+		assert.strictEqual(r.fallback, false);
+		assert.strictEqual(r.target, 'stm32l0');
+		assert.strictEqual(r.mappedFamily, 'STM32L0');
 	});
 
 	test('擦除动作走 flash erase_sector', () => {

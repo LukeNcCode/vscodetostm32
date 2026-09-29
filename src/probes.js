@@ -16,6 +16,9 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+
+/** 芯片型号推导不出 OpenOCD target 脚本时的兜底（并在返回值中标记 fallback） */
+const DEFAULT_OPENOCD_TARGET = 'stm32f4x';
 const { spawn } = require('child_process');
 
 const { PROBE, normalizeInterface, normalizeSpeed, openocdTargetFromDevice } = require('./target');
@@ -114,16 +117,21 @@ function buildStlinkArgs(ctx, filePath, opts) {
 
 /**
  * 构造 openocd 的参数。CMSIS-DAP 探针固定用 interface/cmsis-dap.cfg。
+ *
+ * target 脚本由芯片型号推导（白名单），推导不出时回退到 stm32f4x 并在
+ * 返回值里以 fallback 标记，供上层提示用户——静默用错脚本会连错芯片。
+ *
  * @param {BuildContext} ctx
  * @param {string} filePath 建议传 elf（openocd 原生支持 elf 分段烧录）
  * @param {{ erase?: boolean, reset?: boolean, verify?: boolean, action?: 'flash'|'erase'|'reset' }} opts
- * @returns {{ args: string[], commands: string, target: string }}
+ * @returns {{ args: string[], commands: string, target: string, fallback: boolean, mappedFamily?: string }}
  */
 function buildOpenocdArgs(ctx, filePath, opts) {
 	const o = opts || {};
 	const action = o.action || 'flash';
 	const mapped = openocdTargetFromDevice(ctx.device);
-	const target = mapped ? mapped.target : 'stm32f4x';
+	const fallback = !mapped;
+	const target = mapped ? mapped.target : DEFAULT_OPENOCD_TARGET;
 
 	const args = [
 		'-f', 'interface/cmsis-dap.cfg',
@@ -156,7 +164,13 @@ function buildOpenocdArgs(ctx, filePath, opts) {
 	}
 
 	args.push('-c', cmds.join('; '));
-	return { args, commands: cmds.join('; '), target };
+	return {
+		args,
+		commands: cmds.join('; '),
+		target,
+		fallback,
+		mappedFamily: mapped ? mapped.family : undefined
+	};
 }
 
 /** Windows 下反斜杠路径在部分工具里会被当转义符，统一成正斜杠 */
@@ -331,6 +345,7 @@ function safeUnlink(file) {
 
 module.exports = {
 	PROBE,
+	DEFAULT_OPENOCD_TARGET,
 	buildJlinkArgs,
 	buildStlinkArgs,
 	buildOpenocdArgs,

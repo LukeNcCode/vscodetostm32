@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { PROBE, openocdTargetFromDevice, normalizeInterface } = require('./target');
+const { DEFAULT_OPENOCD_TARGET } = require('./probes');
 
 /**
  * 构造 cortex-debug 配置对象。
@@ -60,7 +61,7 @@ function buildDebugConfiguration(p) {
 
 	// stlink / daplink 统一走 openocd
 	const mapped = openocdTargetFromDevice(p.device);
-	const targetCfg = mapped ? mapped.target : 'stm32f4x';
+	const targetCfg = mapped ? mapped.target : DEFAULT_OPENOCD_TARGET;
 	const cfg = {
 		...common,
 		servertype: 'openocd',

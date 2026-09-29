@@ -168,7 +168,16 @@ async function execute(ctx, action, elfPath) {
 			args = buildStlinkArgs(bctx, elfPath || '', opts);
 		} else {
 			// openocd 原生支持 elf 分段烧录，比 bin 更准
-			args = buildOpenocdArgs(bctx, elfPath || '', opts).args;
+			const built = buildOpenocdArgs(bctx, elfPath || '', opts);
+			args = built.args;
+			if (built.fallback) {
+				ctx.log(
+					`[警告] 芯片型号「${bctx.device || '（未设置）'}」推导不出 OpenOCD target 脚本，` +
+					`已回退到 ${built.target}.cfg。连错芯片时请用「STM32: 设置芯片型号」指定准确型号。`
+				);
+			} else {
+				ctx.log(`[OpenOCD] target/${built.target}.cfg（由 ${built.mappedFamily} 推导）`);
+			}
 		}
 
 		ctx.log(`[执行] ${tool.path} ${args.join(' ')}`);

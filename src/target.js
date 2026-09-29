@@ -24,38 +24,70 @@ const PROBE_LABEL = {
 };
 
 /**
+ * OpenOCD 的 STM32 target 脚本白名单（已逐一对照 openocd-org/openocd 仓库核实）。
+ *
+ * 为什么用白名单而不是字符串推导：OpenOCD 的命名并不统一——
+ *   stm32f4x.cfg / stm32h7x.cfg / stm32wbx.cfg  （带系列数字或字母）
+ *   stm32l0.cfg / stm32l1.cfg                    （不带尾部的 x，历史遗留）
+ * 且部分系列根本没有脚本（MP1 只在 ST 自家分支、W1 无收录）。
+ * 推导出的文件名若不存在，OpenOCD 会直接启动失败，因此这里只认核实过的名字。
+ *
+ * 覆盖 OpenOCD v0.12.0 与 master 的并集。
+ */
+const OPENOCD_TARGET_SCRIPTS = {
+	STM32C0: 'stm32c0x',
+	STM32F0: 'stm32f0x',
+	STM32F1: 'stm32f1x',
+	STM32F2: 'stm32f2x',
+	STM32F3: 'stm32f3x',
+	STM32F4: 'stm32f4x',
+	STM32F7: 'stm32f7x',
+	STM32G0: 'stm32g0x',
+	STM32G4: 'stm32g4x',
+	STM32H7: 'stm32h7x',
+	STM32L0: 'stm32l0',
+	STM32L1: 'stm32l1',
+	STM32L4: 'stm32l4x',
+	STM32L5: 'stm32l5x',
+	STM32U0: 'stm32u0x',
+	STM32U5: 'stm32u5x',
+	STM32WB: 'stm32wbx',
+	STM32WL: 'stm32wlx'
+};
+
+/**
  * 从 STM32 型号推导 OpenOCD 的 target 脚本名。
- *
- * 规则（已对照 OpenOCD tcl/target 目录核实）：
- *   STM32F407ZG -> stm32f4x.cfg
- *   STM32F103C8 -> stm32f1x.cfg
- *   STM32H743ZI -> stm32h7x.cfg
- *   STM32G071RB -> stm32g0x.cfg
- *   STM32L476RG -> stm32l4x.cfg
- *   STM32F767ZI -> stm32f7x.cfg
- *
- * 即：family = 数字部分的最高位，series = 数字部分的第二位。
  *
  * @param {string} device 例如 "STM32F407ZG"
  * @returns {{ target: string, family: string } | undefined}
- *   target 为不含扩展名的脚本名（如 "stm32f4x"），无法解析时返回 undefined。
+ *   target 为不含扩展名的脚本名（如 "stm32f4x"）；
+ *   无法解析或该系列没有可用脚本时返回 undefined，调用方需回退或提示。
  */
 function openocdTargetFromDevice(device) {
 	if (!device) {
 		return undefined;
 	}
 	const cleaned = String(device).trim().toUpperCase().replace(/[\s_-]/g, '');
-	// OpenOCD 的 tcl/target 命名规律（已对照仓库核实）：
-	//   单字母系列 -> stm32<字母><数字>x   例 STM32F407ZG -> stm32f4x
-	//   双字母系列 -> stm32<字母>x         例 STM32WB55CG -> stm32wbx
-	const m = /^STM32([A-Z]{1,2})(\d)(\d)/.exec(cleaned);
+	// STM32 之后是 1~2 个系列字母，再跟数字。例：
+	//   STM32F407ZG  -> F  + 4
+	//   STM32WB55CG  -> WB + 5
+	//   STM32W108C8  -> W  + 1
+	const m = /^STM32([A-Z]{1,2})(\d)/.exec(cleaned);
 	if (!m) {
 		return undefined;
 	}
-	const letters = m[1].toLowerCase();
+
+	const letters = m[1];
 	const series = m[2];
-	const target = letters.length === 2 ? `stm32${letters}x` : `stm32${letters}${series}x`;
-	return { target, family: `STM32${m[1]}${series}` };
+	// 单字母系列的脚本按 "字母+系列数字" 归类（F4 -> STM32F4）
+	// 双字母系列整体归类（WB55 -> STM32WB）
+	const family = letters.length === 2 ? `STM32${letters}` : `STM32${letters}${series}`;
+
+	const target = OPENOCD_TARGET_SCRIPTS[family];
+	if (!target) {
+		return undefined;
+	}
+	return { target, family };
 }
 
 /**
@@ -187,6 +219,7 @@ function firmwareSiblingsFromElf(elfPath) {
 module.exports = {
 	PROBE,
 	PROBE_LABEL,
+	OPENOCD_TARGET_SCRIPTS,
 	openocdTargetFromDevice,
 	normalizeInterface,
 	normalizeSpeed,

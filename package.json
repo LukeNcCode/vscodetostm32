@@ -2,7 +2,7 @@
   "name": "vscodetostm32",
   "displayName": "VscodeToStm32",
   "description": "在 VSCode 中基于 CMake 一键编译、烧录与调试 STM32（JLink / STLink / DAPLink）。",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "LukeBryan",
   "author": {
     "name": "LukeBryan"
@@ -44,91 +44,91 @@
     "commands": [
       {
         "command": "vscodetostm32.build",
-        "title": "编译（Build）",
+        "title": "编译",
         "category": "STM32",
         "icon": "$(tools)"
       },
       {
         "command": "vscodetostm32.flash",
-        "title": "烧录（Flash）",
+        "title": "烧录",
         "category": "STM32",
         "icon": "$(zap)"
       },
       {
         "command": "vscodetostm32.buildAndFlash",
-        "title": "编译并烧录（Build & Flash）",
+        "title": "编译并烧录",
         "category": "STM32",
         "icon": "$(run-all)"
       },
       {
         "command": "vscodetostm32.erase",
-        "title": "全片擦除（Erase Chip）",
+        "title": "全片擦除",
         "category": "STM32",
         "icon": "$(trash)"
       },
       {
         "command": "vscodetostm32.reset",
-        "title": "复位并运行（Reset & Run）",
+        "title": "复位并运行",
         "category": "STM32",
         "icon": "$(debug-restart)"
       },
       {
         "command": "vscodetostm32.probe",
-        "title": "检测探针连接（Probe）",
+        "title": "检测探针连接",
         "category": "STM32",
         "icon": "$(plug)"
       },
       {
         "command": "vscodetostm32.selectProbe",
-        "title": "选择烧录器（Select Probe）",
+        "title": "选择烧录器",
         "category": "STM32",
         "icon": "$(list-selection)"
       },
       {
         "command": "vscodetostm32.selectDevice",
-        "title": "设置芯片型号（Set Device）",
+        "title": "设置芯片型号",
         "category": "STM32",
         "icon": "$(chip)"
       },
       {
         "command": "vscodetostm32.debug",
-        "title": "调试（Debug）",
+        "title": "调试",
         "category": "STM32",
         "icon": "$(debug-alt)"
       },
       {
         "command": "vscodetostm32.generateDebugConfig",
-        "title": "生成调试配置（Generate launch.json）",
+        "title": "生成调试配置",
         "category": "STM32",
         "icon": "$(debug-alt)"
       },
       {
         "command": "vscodetostm32.initProjectConfig",
-        "title": "初始化/重新生成项目配置（.vscode/stm32.json）",
+        "title": "初始化/重新生成项目配置",
         "category": "STM32",
         "icon": "$(file-code)"
       },
       {
         "command": "vscodetostm32.quickSetup",
-        "title": "快速配置（项目配置向导）",
+        "title": "快速配置",
         "category": "STM32",
         "icon": "$(wand)"
       },
       {
         "command": "vscodetostm32.toolchainSetup",
-        "title": "工具链配置（外部工具路径）",
+        "title": "工具链配置",
         "category": "STM32",
         "icon": "$(wrench)"
       },
       {
         "command": "vscodetostm32.diagnosePaths",
-        "title": "诊断工具路径（Diagnose Paths）",
+        "title": "诊断工具路径",
         "category": "STM32",
         "icon": "$(search)"
       },
       {
         "command": "vscodetostm32.showOutput",
-        "title": "显示输出日志（Show Output）",
+        "title": "显示输出日志",
         "category": "STM32",
         "icon": "$(output)"
       }
