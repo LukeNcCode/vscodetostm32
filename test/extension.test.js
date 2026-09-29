@@ -27,7 +27,10 @@ suite('Extension Test Suite', () => {
 			'vscodetostm32.selectProbe',
 			'vscodetostm32.selectDevice',
 			'vscodetostm32.generateDebugConfig',
+			'vscodetostm32.debug',
+			'vscodetostm32.initProjectConfig',
 			'vscodetostm32.quickSetup',
+			'vscodetostm32.toolchainSetup',
 			'vscodetostm32.diagnosePaths',
 			'vscodetostm32.showOutput',
 		];
@@ -36,15 +39,34 @@ suite('Extension Test Suite', () => {
 		}
 	});
 
-	test('关键配置项存在且默认值正确', () => {
+	test('机器级设置项存在且默认值正确', () => {
 		const cfg = vscode.workspace.getConfiguration('vscodetostm32');
-		assert.strictEqual(cfg.get('probe'), 'stlink');
-		assert.strictEqual(cfg.get('interface'), 'SWD');
-		assert.strictEqual(cfg.get('speed'), 4000);
 		assert.strictEqual(cfg.get('probeCheck'), 'warn');
-		assert.strictEqual(cfg.get('verifyAfterFlash'), true);
-		assert.strictEqual(cfg.get('resetAfterFlash'), true);
-		assert.strictEqual(cfg.get('buildBeforeFlash'), false);
+		assert.strictEqual(cfg.get('jlinkPath'), '');
+		assert.strictEqual(cfg.get('debugServerPath'), '');
+		assert.strictEqual(cfg.get('cubeProgrammerPath'), '');
+		assert.strictEqual(cfg.get('openocdPath'), '');
+		assert.strictEqual(cfg.get('armToolchainPath'), '');
+	});
+
+	test('已迁移的项目级配置不再出现在 settings 中', () => {
+		const cfg = vscode.workspace.getConfiguration('vscodetostm32');
+		// 这 10 项已迁到 .vscode/stm32.json，从 settings 读取应为 undefined
+		for (const key of ['probe', 'device', 'interface', 'speed', 'debugConfigName',
+			'elfPath', 'buildTarget', 'buildBeforeFlash', 'verifyAfterFlash', 'resetAfterFlash']) {
+			assert.strictEqual(cfg.get(key), undefined, `${key} 不应再出现在 settings 中`);
+		}
+	});
+
+	test('项目配置模块可读写 .vscode/stm32.json', () => {
+		const project = require('../src/project');
+		const defaults = project.defaultProjectConfig();
+		assert.strictEqual(defaults.probe, 'stlink');
+		assert.strictEqual(defaults.interface, 'SWD');
+		assert.strictEqual(defaults.speed, 4000);
+		assert.strictEqual(defaults.verifyAfterFlash, true);
+		assert.strictEqual(defaults.resetAfterFlash, true);
+		assert.strictEqual(defaults.buildBeforeFlash, false);
 	});
 
 	test('expandWorkspace 展开 ${workspaceFolder}', () => {

@@ -2,7 +2,7 @@
   "name": "vscodetostm32",
   "displayName": "VscodeToStm32",
   "description": "在 VSCode 中基于 CMake 一键编译、烧录与调试 STM32（JLink / STLink / DAPLink）。",
-  "version": "0.1.1",
+  "version": "0.4.0",
   "publisher": "LukeBryan",
   "author": {
     "name": "LukeBryan"
@@ -91,16 +91,34 @@
         "icon": "$(chip)"
       },
       {
+        "command": "vscodetostm32.debug",
+        "title": "调试（Debug）",
+        "category": "STM32",
+        "icon": "$(debug-alt)"
+      },
+      {
         "command": "vscodetostm32.generateDebugConfig",
         "title": "生成调试配置（Generate launch.json）",
         "category": "STM32",
         "icon": "$(debug-alt)"
       },
       {
+        "command": "vscodetostm32.initProjectConfig",
+        "title": "初始化/重新生成项目配置（.vscode/stm32.json）",
+        "category": "STM32",
+        "icon": "$(file-code)"
+      },
+      {
         "command": "vscodetostm32.quickSetup",
-        "title": "快速配置（Quick Setup）",
+        "title": "快速配置（项目配置向导）",
         "category": "STM32",
         "icon": "$(wand)"
+      },
+      {
+        "command": "vscodetostm32.toolchainSetup",
+        "title": "工具链配置（外部工具路径）",
+        "category": "STM32",
+        "icon": "$(wrench)"
       },
       {
         "command": "vscodetostm32.diagnosePaths",
@@ -118,74 +136,6 @@
     "configuration": {
       "title": "VscodeToStm32",
       "properties": {
-        "vscodetostm32.probe": {
-          "type": "string",
-          "enum": [
-            "jlink",
-            "stlink",
-            "daplink"
-          ],
-          "enumDescriptions": [
-            "SEGGER J-Link，通过 JLink.exe CommanderScript 烧录",
-            "ST-LINK，通过 STM32CubeProgrammer CLI 烧录",
-            "CMSIS-DAP / DAPLink，通过 OpenOCD 烧录"
-          ],
-          "default": "stlink",
-          "markdownDescription": "当前使用的烧录器。烧录前扩展会做一次连接探测校验，不匹配时给出提示。",
-          "order": 1
-        },
-        "vscodetostm32.device": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "目标芯片型号，例如 `STM32F407ZG`。用于 J-Link 的 `-device` 参数以及推导 OpenOCD 的 target 脚本（`stm32f4x.cfg`）。留空时 J-Link 交由 SEGGER 自动识别。",
-          "order": 2
-        },
-        "vscodetostm32.interface": {
-          "type": "string",
-          "enum": [
-            "SWD",
-            "JTAG"
-          ],
-          "default": "SWD",
-          "description": "调试接口类型。",
-          "order": 3
-        },
-        "vscodetostm32.speed": {
-          "type": "number",
-          "default": 4000,
-          "description": "接口速度（kHz）。",
-          "order": 4
-        },
-        "vscodetostm32.elfPath": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "固件 `.elf` 路径。留空时自动从 CMake Tools 的构建产物中推导。",
-          "order": 5
-        },
-        "vscodetostm32.buildTarget": {
-          "type": "string",
-          "default": "",
-          "description": "构建目标。留空时使用 CMake Tools 当前选中的目标。",
-          "order": 6
-        },
-        "vscodetostm32.buildBeforeFlash": {
-          "type": "boolean",
-          "default": false,
-          "description": "执行烧录前自动先编译一次。",
-          "order": 7
-        },
-        "vscodetostm32.verifyAfterFlash": {
-          "type": "boolean",
-          "default": true,
-          "description": "烧录后校验 Flash 内容（STLink / DAPLink 生效）。",
-          "order": 8
-        },
-        "vscodetostm32.resetAfterFlash": {
-          "type": "boolean",
-          "default": true,
-          "description": "烧录完成后复位并运行目标程序。",
-          "order": 9
-        },
         "vscodetostm32.probeCheck": {
           "type": "string",
           "enum": [
@@ -237,12 +187,6 @@
           "default": "",
           "markdownDescription": "调试用的 GDB Server 路径。留空时按探针自动推导（J-Link 用同目录 `JLinkGDBServerCL.exe`，其它用 `openocd`）。",
           "order": 16
-        },
-        "vscodetostm32.debugConfigName": {
-          "type": "string",
-          "default": "STM32 Debug (VscodeToStm32)",
-          "description": "生成的 cortex-debug 配置名称。",
-          "order": 17
         }
       }
     },

@@ -9,3 +9,6 @@ package-lock.json
 **/*.map
 **/eslint.config.mjs
 **/.vscode-test.*
+
+# 注意：不要排除 data/ 与 src/ —— 它们必须随扩展发布。
+# data/stm32-devices.json 是内置芯片表，缺失会导致芯片选择功能不可用。

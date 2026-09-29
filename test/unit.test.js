@@ -392,3 +392,418 @@ suite('backend: hasErrorMarkers', () => {
 		assert.strictEqual(backend.hasErrorMarkers('verified OK'), false);
 	});
 });
+
+const project = require('../src/project');
+const fs = require('fs');
+const os = require('os');
+
+suite('project: 项目配置读写', () => {
+	/** 每个测试用独立的临时工作区，避免相互干扰与污染真实仓库 */
+	let tmpRoot;
+
+	setup(() => {
+		tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'stm32-cfg-'));
+	});
+
+	teardown(() => {
+		try {
+			fs.rmSync(tmpRoot, { recursive: true, force: true });
+		} catch {
+			// 临时目录清理失败不影响测试结论
+		}
+	});
+
+	test('默认配置包含全部 10 个项目级字段', () => {
+		const d = project.defaultProjectConfig();
+		assert.deepStrictEqual(Object.keys(d).sort(), [...project.PROJECT_FIELD_KEYS].sort());
+		assert.strictEqual(d.probe, 'stlink');
+		assert.strictEqual(d.interface, 'SWD');
+		assert.strictEqual(d.speed, 4000);
+		assert.strictEqual(d.device, '');
+		assert.strictEqual(d.buildBeforeFlash, false);
+		assert.strictEqual(d.verifyAfterFlash, true);
+		assert.strictEqual(d.resetAfterFlash, true);
+	});
+
+	test('配置文件路径为 <工程>/.vscode/stm32.json', () => {
+		const p = project.configPath(tmpRoot);
+		assert.strictEqual(p, path.join(tmpRoot, '.vscode', 'stm32.json'));
+	});
+
+	test('文件不存在时返回默认值且 exists=false', () => {
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.exists, false);
+		assert.strictEqual(r.config.probe, 'stlink');
+		assert.deepStrictEqual(r.warnings, []);
+	});
+
+	test('写入后可读回，且自动创建 .vscode 目录', () => {
+		project.writeProjectConfig(tmpRoot, { device: 'STM32F407ZG', probe: 'jlink', speed: 1800 });
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.exists, true);
+		assert.strictEqual(r.config.device, 'STM32F407ZG');
+		assert.strictEqual(r.config.probe, 'jlink');
+		assert.strictEqual(r.config.speed, 1800);
+		// 未指定的字段应保留默认值
+		assert.strictEqual(r.config.interface, 'SWD');
+	});
+
+	test('未指定的字段在写入时补默认值', () => {
+		project.writeProjectConfig(tmpRoot, { device: 'STM32F103C8' });
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.config.debugConfigName, 'Debug');
+		assert.strictEqual(r.config.verifyAfterFlash, true);
+	});
+
+	test('非法枚举值被忽略并产生告警', () => {
+		fs.mkdirSync(path.join(tmpRoot, '.vscode'), { recursive: true });
+		fs.writeFileSync(project.configPath(tmpRoot), JSON.stringify({ probe: 'jlink2', speed: -5 }), 'utf8');
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.config.probe, 'stlink'); // 回退默认
+		assert.strictEqual(r.config.speed, 4000);
+		assert.strictEqual(r.warnings.length, 2);
+		assert.ok(r.warnings.some((w) => w.includes('probe')));
+		assert.ok(r.warnings.some((w) => w.includes('speed')));
+	});
+
+	test('未知字段被忽略并提示', () => {
+		fs.mkdirSync(path.join(tmpRoot, '.vscode'), { recursive: true });
+		fs.writeFileSync(project.configPath(tmpRoot), JSON.stringify({ device: 'STM32F407ZG', bogus: 1 }), 'utf8');
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.config.device, 'STM32F407ZG');
+		assert.ok(r.warnings.some((w) => w.includes('bogus')));
+	});
+
+	test('损坏的 JSON 回退到默认值而不抛错', () => {
+		fs.mkdirSync(path.join(tmpRoot, '.vscode'), { recursive: true });
+		fs.writeFileSync(project.configPath(tmpRoot), '{ this is not json', 'utf8');
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.exists, true);
+		assert.strictEqual(r.config.probe, 'stlink');
+		assert.ok(r.warnings.length >= 1);
+	});
+
+	test('带注释与尾逗号的 JSON 能被解析', () => {
+		fs.mkdirSync(path.join(tmpRoot, '.vscode'), { recursive: true });
+		const content = `{
+  // 芯片型号
+  "device": "STM32H743ZI",
+  "probe": "daplink",
+}`;
+		fs.writeFileSync(project.configPath(tmpRoot), content, 'utf8');
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.config.device, 'STM32H743ZI');
+		assert.strictEqual(r.config.probe, 'daplink');
+		assert.deepStrictEqual(r.warnings, []);
+	});
+
+	test('ensureProjectConfig 仅在缺失时创建', () => {
+		const first = project.ensureProjectConfig(tmpRoot);
+		assert.strictEqual(first.created, true);
+		assert.ok(fs.existsSync(first.file));
+		const second = project.ensureProjectConfig(tmpRoot);
+		assert.strictEqual(second.created, false);
+	});
+
+	test('ensureProjectConfig 不覆盖已存在的内容', () => {
+		project.writeProjectConfig(tmpRoot, { device: 'STM32F103C8' });
+		project.ensureProjectConfig(tmpRoot);
+		const r = project.readProjectConfig(tmpRoot);
+		assert.strictEqual(r.config.device, 'STM32F103C8');
+	});
+
+	test('writeProjectTemplate 生成的带注释文件可被自己解析', () => {
+		const { written } = project.writeProjectTemplate(tmpRoot, true);
+		assert.strictEqual(written, true);
+		const r = project.readProjectConfig(tmpRoot);
+		assert.deepStrictEqual(r.warnings, []);
+		assert.strictEqual(r.config.probe, 'stlink');
+		assert.strictEqual(r.config.interface, 'SWD');
+	});
+
+	test('writeProjectTemplate 默认不覆盖已有文件', () => {
+		project.writeProjectConfig(tmpRoot, { device: 'STM32F103C8' });
+		const { written } = project.writeProjectTemplate(tmpRoot);
+		assert.strictEqual(written, false);
+		assert.strictEqual(project.readProjectConfig(tmpRoot).config.device, 'STM32F103C8');
+	});
+
+	test('writeProjectConfig 过滤未知字段', () => {
+		project.writeProjectConfig(tmpRoot, { device: 'STM32F407ZG', bogus: 'x' });
+		const raw = JSON.parse(fs.readFileSync(project.configPath(tmpRoot), 'utf8'));
+		assert.strictEqual(raw.bogus, undefined);
+		assert.strictEqual(raw.device, 'STM32F407ZG');
+	});
+
+	test('coerceField 对各类型的校验', () => {
+		assert.strictEqual(project.coerceField('device', '  STM32F407ZG  ').value, 'STM32F407ZG');
+		assert.strictEqual(project.coerceField('device', 123).ok, false);
+		assert.strictEqual(project.coerceField('probe', 'jlink').ok, true);
+		assert.strictEqual(project.coerceField('probe', 'nope').ok, false);
+		assert.strictEqual(project.coerceField('speed', '1800').value, 1800);
+		assert.strictEqual(project.coerceField('speed', 0).ok, false);
+		assert.strictEqual(project.coerceField('verifyAfterFlash', false).ok, true);
+		assert.strictEqual(project.coerceField('verifyAfterFlash', 'true').ok, false);
+		assert.strictEqual(project.coerceField('unknownKey', 1).ok, false);
+	});
+});
+
+const staleness = require('../src/staleness');
+
+suite('staleness: 脏检查', () => {
+	/** 临时工程目录，每个测试独立 */
+	let tmpRoot;
+
+	setup(() => {
+		tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'stm32-stale-'));
+	});
+
+	teardown(() => {
+		try {
+			fs.rmSync(tmpRoot, { recursive: true, force: true });
+		} catch {
+			// 清理失败不影响结论
+		}
+	});
+
+	/** 写文件并指定 mtime（秒级即可，脏检查有 1s 容差） */
+	function writeFileWithTime(rel, content, mtimeSec) {
+		const full = path.join(tmpRoot, rel);
+		fs.mkdirSync(path.dirname(full), { recursive: true });
+		fs.writeFileSync(full, content, 'utf8');
+		const t = new Date(mtimeSec * 1000);
+		fs.utimesSync(full, t, t);
+		return full;
+	}
+
+	test('isSourceFile 只认源码类扩展名', () => {
+		assert.strictEqual(staleness.isSourceFile('main.c'), true);
+		assert.strictEqual(staleness.isSourceFile('app.cpp'), true);
+		assert.strictEqual(staleness.isSourceFile('board.h'), true);
+		assert.strictEqual(staleness.isSourceFile('startup.s'), true);
+		assert.strictEqual(staleness.isSourceFile('link.ld'), true);
+		assert.strictEqual(staleness.isSourceFile('CMakeLists.txt'), true);
+		assert.strictEqual(staleness.isSourceFile('README.md'), false);
+		assert.strictEqual(staleness.isSourceFile('logo.png'), false);
+		assert.strictEqual(staleness.isSourceFile('firmware.elf'), false);
+	});
+
+	test('isSkippedDir 排除构建与缓存目录', () => {
+		assert.strictEqual(staleness.isSkippedDir('build'), true);
+		assert.strictEqual(staleness.isSkippedDir('Build'), true);
+		assert.strictEqual(staleness.isSkippedDir('cmake-build-debug'), true);
+		assert.strictEqual(staleness.isSkippedDir('cmake-build-anything'), true);
+		assert.strictEqual(staleness.isSkippedDir('.git'), true);
+		assert.strictEqual(staleness.isSkippedDir('node_modules'), true);
+		assert.strictEqual(staleness.isSkippedDir('build-release'), true);
+		assert.strictEqual(staleness.isSkippedDir('src'), false);
+		assert.strictEqual(staleness.isSkippedDir('Core'), false);
+	});
+
+	test('findNewestSource 取到最新源文件并跳过构建目录', () => {
+		writeFileWithTime('Core/main.c', 'int main(){}', 1000);
+		writeFileWithTime('Core/app.c', 'int app(){}', 2000);
+		// 构建目录里的文件更新，但应被跳过
+		writeFileWithTime('build/Debug/generated.c', 'x', 9999);
+		const r = staleness.findNewestSource(tmpRoot);
+		assert.strictEqual(r.newestMs, 2000 * 1000);
+		assert.ok(r.newestFile.endsWith('app.c'));
+		assert.strictEqual(r.scanned, 2);
+	});
+
+	test('源码比 elf 新 -> needsBuild', () => {
+		const elf = writeFileWithTime('build/Debug/app.elf', 'ELF', 1000);
+		writeFileWithTime('Core/main.c', 'code', 5000);
+		const r = staleness.checkStaleness({ elfPath: elf, root: tmpRoot });
+		assert.strictEqual(r.needsBuild, true);
+		assert.strictEqual(r.reason, 'source-newer');
+	});
+
+	test('elf 比源码新 -> 不需要构建', () => {
+		writeFileWithTime('Core/main.c', 'code', 1000);
+		const elf = writeFileWithTime('build/Debug/app.elf', 'ELF', 5000);
+		const r = staleness.checkStaleness({ elfPath: elf, root: tmpRoot });
+		assert.strictEqual(r.needsBuild, false);
+		assert.strictEqual(r.reason, 'up-to-date');
+	});
+
+	test('时间差在容差内不算脏（避免文件系统精度误报）', () => {
+		writeFileWithTime('Core/main.c', 'code', 1000);
+		const elf = writeFileWithTime('build/Debug/app.elf', 'ELF', 1000);
+		const r = staleness.checkStaleness({ elfPath: elf, root: tmpRoot, toleranceMs: 2000 });
+		assert.strictEqual(r.needsBuild, false);
+	});
+
+	test('没有 elf 路径 -> needsBuild (no-elf)', () => {
+		writeFileWithTime('Core/main.c', 'code', 1000);
+		const r = staleness.checkStaleness({ elfPath: undefined, root: tmpRoot });
+		assert.strictEqual(r.needsBuild, true);
+		assert.strictEqual(r.reason, 'no-elf');
+	});
+
+	test('elf 路径不存在 -> needsBuild (elf-missing)', () => {
+		writeFileWithTime('Core/main.c', 'code', 1000);
+		const r = staleness.checkStaleness({
+			elfPath: path.join(tmpRoot, 'build', 'nope.elf'),
+			root: tmpRoot
+		});
+		assert.strictEqual(r.needsBuild, true);
+		assert.strictEqual(r.reason, 'elf-missing');
+	});
+
+	test('扫不到源码时不拦截（reason=no-source）', () => {
+		const elf = writeFileWithTime('build/Debug/app.elf', 'ELF', 1000);
+		const r = staleness.checkStaleness({ elfPath: elf, root: tmpRoot });
+		assert.strictEqual(r.needsBuild, false);
+		assert.strictEqual(r.reason, 'no-source');
+	});
+
+	test('非源码文件更新不触发（README/图片）', () => {
+		writeFileWithTime('Core/main.c', 'code', 1000);
+		const elf = writeFileWithTime('build/Debug/app.elf', 'ELF', 2000);
+		writeFileWithTime('README.md', 'docs', 9000);
+		writeFileWithTime('logo.png', 'img', 9000);
+		const r = staleness.checkStaleness({ elfPath: elf, root: tmpRoot });
+		assert.strictEqual(r.needsBuild, false);
+	});
+
+	test('头文件更新也算脏', () => {
+		writeFileWithTime('Core/main.c', 'code', 1000);
+		const elf = writeFileWithTime('build/Debug/app.elf', 'ELF', 2000);
+		writeFileWithTime('Core/board.h', '#define X 1', 3000);
+		const r = staleness.checkStaleness({ elfPath: elf, root: tmpRoot });
+		assert.strictEqual(r.needsBuild, true);
+		assert.ok(r.newestFile.endsWith('board.h'));
+	});
+
+	test('CMakeLists.txt 更新也算脏', () => {
+		writeFileWithTime('Core/main.c', 'code', 1000);
+		const elf = writeFileWithTime('build/Debug/app.elf', 'ELF', 2000);
+		writeFileWithTime('CMakeLists.txt', 'project(x)', 4000);
+		const r = staleness.checkStaleness({ elfPath: elf, root: tmpRoot });
+		assert.strictEqual(r.needsBuild, true);
+	});
+
+	test('describe 给出可读说明', () => {
+		assert.ok(staleness.describe({ reason: 'no-elf' }).includes('编译'));
+		assert.ok(staleness.describe({ reason: 'elf-missing' }).includes('编译'));
+		assert.ok(staleness.describe({ reason: 'source-newer', sourceMs: 0, elfMs: 0 }).includes('源码比固件新'));
+		assert.strictEqual(staleness.describe({ reason: 'up-to-date' }), '固件已是最新');
+	});
+
+	test('formatTime 对 0 返回未知', () => {
+		assert.strictEqual(staleness.formatTime(0), '未知');
+		assert.strictEqual(staleness.formatTime(undefined), '未知');
+		assert.ok(/\d{4}-\d{2}-\d{2}/.test(staleness.formatTime(Date.now())));
+	});
+
+	test('不存在的根目录不抛错', () => {
+		const r = staleness.findNewestSource(path.join(tmpRoot, 'definitely', 'missing'));
+		assert.strictEqual(r.newestMs, 0);
+		assert.strictEqual(r.scanned, 0);
+	});
+});
+
+const devices = require('../src/devices');
+
+suite('devices: 内置芯片数据库', () => {
+	test('数据库可加载且含预期规模的型号', () => {
+		devices.resetCache();
+		const db = devices.loadDatabase();
+		assert.ok(db.total > 1000, `型号数应 > 1000，实际 ${db.total}`);
+		assert.ok(db.source.includes('SEGGER') || db.source.includes('J-Link'));
+		assert.strictEqual(Object.keys(db.series).length > 15, true, '系列数应 > 15');
+	});
+
+	test('覆盖主要 STM32 系列', () => {
+		const series = devices.listSeries();
+		for (const s of ['STM32F1', 'STM32F4', 'STM32H7', 'STM32G0', 'STM32L4', 'STM32WB5']) {
+			assert.ok(series.includes(s), `缺少系列 ${s}`);
+		}
+	});
+
+	test('精确查找常见型号（大小写不敏感）', () => {
+		const expect = {
+			STM32F407ZG: { core: 'Cortex-M4', flashKB: 1024 },
+			STM32F103C8: { core: 'Cortex-M3', flashKB: 64 },
+			STM32H743ZI: { core: 'Cortex-M7', flashKB: 1024 },
+			STM32L476RG: { core: 'Cortex-M4', flashKB: 1024 }
+		};
+		for (const [name, want] of Object.entries(expect)) {
+			const got = devices.findDevice(name);
+			assert.ok(got, `未找到 ${name}`);
+			assert.strictEqual(got.core, want.core, `${name} 内核不符`);
+			assert.strictEqual(got.flashKB, want.flashKB, `${name} Flash 不符`);
+		}
+		const lower = devices.findDevice('stm32f407zg');
+		assert.strictEqual(lower.name, 'STM32F407ZG', '应返回数据库中的标准写法');
+	});
+
+	test('不存在的型号返回 undefined', () => {
+		assert.strictEqual(devices.findDevice('NOTACHIP'), undefined);
+		assert.strictEqual(devices.findDevice(''), undefined);
+		assert.strictEqual(devices.findDevice(undefined), undefined);
+	});
+
+	test('搜索命中型号片段，且 407 优先返回 STM32F407xx', () => {
+		const hits = devices.search('407', { limit: 10 });
+		assert.ok(hits.length > 0);
+		assert.strictEqual(hits[0].name, 'STM32F407IE', '匹配位置最靠前者应排最前');
+		assert.ok(hits.every((h) => h.name.includes('407')));
+	});
+
+	test('搜索支持完全匹配优先', () => {
+		const hits = devices.search('STM32F407ZG', { limit: 5 });
+		assert.strictEqual(hits[0].name, 'STM32F407ZG');
+		assert.strictEqual(hits[0].rank, 0, '完全匹配 rank 应为 0');
+	});
+
+	test('搜索支持多关键词（空格分隔）', () => {
+		const hits = devices.search('STM32F4 ZG', { limit: 20 });
+		assert.ok(hits.length > 0);
+		for (const h of hits) {
+			assert.ok(h.name.includes('ZG') && h.name.startsWith('STM32F4'), `不该命中 ${h.name}`);
+		}
+	});
+
+	test('搜系列名可返回该系列型号', () => {
+		const hits = devices.search('STM32WB5', { limit: 10 });
+		assert.ok(hits.length > 0);
+		assert.ok(hits.every((h) => h.name.startsWith('STM32WB5')));
+	});
+
+	test('空查询返回空数组且不报错', () => {
+		assert.deepStrictEqual(devices.search(''), []);
+		assert.deepStrictEqual(devices.search('   '), []);
+		assert.deepStrictEqual(devices.search(undefined), []);
+	});
+
+	test('搜索受 limit 限制', () => {
+		const hits = devices.search('STM32', { limit: 15 });
+		assert.strictEqual(hits.length, 15);
+	});
+
+	test('listBySeries 返回该系列全部型号', () => {
+		const f4 = devices.listBySeries('STM32F4');
+		assert.ok(f4.length > 50, `STM32F4 型号数应 > 50，实际 ${f4.length}`);
+		assert.ok(f4.every((d) => d.name.startsWith('STM32F4')));
+		assert.strictEqual(devices.listBySeries('NOTASERIES').length, 0);
+	});
+
+	test('listAll 与总数一致', () => {
+		const db = devices.loadDatabase();
+		assert.strictEqual(devices.listAll().length, db.total);
+	});
+
+	test('formatFlash 输出可读单位', () => {
+		assert.strictEqual(devices.formatFlash(64), '64 KB');
+		assert.strictEqual(devices.formatFlash(1024), '1 MB');
+		assert.strictEqual(devices.formatFlash(1536), '1.5 MB');
+		assert.strictEqual(devices.formatFlash(0), '—');
+	});
+
+	test('数据库来源标注为 SEGGER J-Link DLL 导出', () => {
+		const db = devices.loadDatabase();
+		assert.ok(/ExpDevList|SEGGER/i.test(db.source), `来源应标明 SEGGER 导出，实际：${db.source}`);
+	});
+});
