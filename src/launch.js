@@ -3,6 +3,9 @@
 /**
  * 生成 / 更新 cortex-debug 的 launch.json 配置。
  *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * 后端映射（已对照 cortex-debug 1.12.x 的 configurationAttributes 核实）：
  *   jlink   -> servertype: "jlink"，serverpath 指向 JLinkGDBServerCL.exe
  *   stlink  -> servertype: "openocd"（用 OpenOCD 驱动 ST-LINK，cortex-debug 的 stlink

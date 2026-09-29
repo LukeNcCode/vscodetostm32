@@ -3,6 +3,9 @@
 /**
  * VscodeToStm32 —— 在 VSCode 中基于 CMake 一键编译、烧录与调试 STM32。
  *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * 整体流程：
  *   Build  -> ms-vscode.cmake-tools 的 buildWithResult（复用其 kit / 配置 / 构建目录）
  *   Flash  -> jlink: JLink.exe CommanderScript

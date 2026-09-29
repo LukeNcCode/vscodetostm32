@@ -2,6 +2,10 @@
 
 /**
  * 外部工具（J-Link / STM32CubeProgrammer / OpenOCD）的定位。
+ *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * 策略：显式设置 > 常见安装目录扫描 > PATH。
  */
 

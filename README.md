@@ -179,6 +179,12 @@ npx vsce package      # 打包 VSIX
 
 按 `F5` 启动 Extension Host 调试扩展。
 
+## 作者
+
+**LukeBryan** — <https://github.com/LukeNcCode>
+
+问题反馈与功能建议：<https://github.com/LukeNcCode/vscodetostm32/issues>
+
 ## 许可证
 
-MIT
+[MIT](LICENSE) © 2026 LukeBryan

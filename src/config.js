@@ -2,6 +2,10 @@
 
 /**
  * 扩展的常量与配置读取。
+ *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * 纯逻辑，不依赖 vscode 的部分（如型号映射）单独放在纯函数里，方便单测。
  */
 

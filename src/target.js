@@ -2,6 +2,10 @@
 
 /**
  * 芯片型号 / 探针相关的纯逻辑工具。
+ *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * 本文件刻意不 require('vscode')，以便在 Node 环境下直接单测。
  */
 

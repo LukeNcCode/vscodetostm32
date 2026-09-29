@@ -3,6 +3,9 @@
 /**
  * 烧录后端执行层：把 probes.js 的命令构造 + tools.js 的路径解析组合起来，
  * 对外暴露 probe / flash / erase / reset 四个动作。
+ *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
  */
 
 const { PROBE, PROBE_LABEL, classifyProbeOutput } = require('./target');

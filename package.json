@@ -3,8 +3,19 @@
   "displayName": "VscodeToStm32",
   "description": "在 VSCode 中基于 CMake 一键编译、烧录与调试 STM32（JLink / STLink / DAPLink）。",
   "version": "0.1.1",
-  "publisher": "vscodetostm32",
+  "publisher": "LukeBryan",
+  "author": {
+    "name": "LukeBryan"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LukeNcCode/vscodetostm32.git"
+  },
+  "homepage": "https://github.com/LukeNcCode/vscodetostm32#readme",
+  "bugs": {
+    "url": "https://github.com/LukeNcCode/vscodetostm32/issues"
+  },
   "engines": {
     "vscode": "^1.84.0"
   },

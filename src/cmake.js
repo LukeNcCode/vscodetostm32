@@ -3,6 +3,9 @@
 /**
  * 与 ms-vscode.cmake-tools 的公开 API 对接。
  *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * API 版本 v5（vscode-cmake-tools 1.7.0+），关键成员：
  *   getApi(Version.v5) -> CMakeToolsApi
  *   api.getActiveFolderPath(): string

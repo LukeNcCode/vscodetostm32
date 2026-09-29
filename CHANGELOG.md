@@ -4,6 +4,12 @@
 
 ## [0.1.1] - 2026-02-14
 
+### 元数据
+
+- 补齐作者与仓库信息：`author` / `publisher`（LukeBryan）、`repository` / `homepage` / `bugs`。
+- 新增 `LICENSE` 文件（MIT, © 2026 LukeBryan），此前 `package.json` 声明了 MIT 但缺文件。
+- 各源码模块补充 `@copyright` / `@license` 版权头。
+
 ### 修复
 
 - **J-Link 调试配置写入空路径**：`generateDebugConfig` 此前硬传 `serverPath: undefined`，

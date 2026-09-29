@@ -2,6 +2,10 @@
 
 /**
  * 纯逻辑单测：不加载 vscode，可直接在 Node 下跑。
+ *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * 覆盖芯片型号映射、命令构造、输出分类、工具路径挑选。
  */
 

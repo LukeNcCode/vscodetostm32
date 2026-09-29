@@ -3,6 +3,9 @@
 /**
  * 三个烧录后端的命令行构造（纯函数）与执行封装。
  *
+ * @copyright (c) 2026 LukeBryan
+ * @license MIT
+ *
  * 后端分工（已核实）：
  *   jlink   -> JLink.exe -device ... -if SWD -speed ... -autoconnect 1 -CommanderScript <临时脚本>
  *   stlink  -> STM32_Programmer_CLI -c port=SWD freq=... -w <file> [-v] [-rst]
